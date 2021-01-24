@@ -11,7 +11,7 @@ import mujoco_py
 import os
 
 model_dir = 'C:/Users/xieji/.mujoco/mjhaptix150/model/MPL'
-model_xml = 'MPL_Boxes.xml'
+model_xml = 'MPL_Handle.xml'
 
 def main():
     

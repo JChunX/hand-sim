@@ -1,0 +1,21 @@
+<mujoco>
+	<include file="MPL.xml"/>
+	<include file="assets.xml"/>
+
+	<worldbody>	
+		<geom name="Wall" type="box" material="MatWood" pos="0 0.1 .15" size="0.07 0.01 0.1501"/>
+
+		<body name="Screw" pos="0 0.05 0.2">
+			<geom name="knob" type="capsule" material="MatFoil" size="0.007 0.03" euler="1.57 0 0" condim="3" friction="1 .001 .001"/>
+			<geom name="Handle0" type="box" material="MatFoil" pos="0 -.04 0.025" size="0.02 0.007 0.01" euler="0 1.57 0" condim="3" friction="1 .001 .001"/>
+			<geom name="Handle1" type="box" material="MatFoil" pos="0 -.04 -.025" size="0.02 0.007 0.01" euler="0 1.57 0" condim="3" friction="1 .001 .001"/>
+			<joint name="Latch" type="hinge" axis="0 1 0" pos="0 0 0" limited="true" range="0 1.57" stiffness="0.01" damping="0.001"/>
+		</body>		
+		
+		<body name="ScrewDriver" pos=".1 -0.1 0.05">
+			<geom name="Handle" type="capsule" material="MatWoodB" size="0.02 0.05" euler="1.57 0 0" condim="6" friction="1 .001 .001"/>
+			<geom name="Rod" type="box" material="MatFoil" pos="0 0.09 0" size="0.015 0.03 .004" condim="6" friction="1 .001 .001"/>
+			<joint class="free"/>
+		</body>
+	</worldbody>
+</mujoco>

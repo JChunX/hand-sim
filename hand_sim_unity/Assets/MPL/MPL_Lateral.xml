@@ -1,0 +1,27 @@
+<mujoco>
+	<include file="MPL.xml"/>
+	<include file="assets.xml"/>
+
+	<default>
+		<default class="board">
+			<geom type="box" material="MatWood"/>
+		</default>
+	</default>
+
+	<worldbody>
+		<body childclass="board" pos="0 0 0.009">
+			<geom name="farr" pos="0 0.2 0"  size="0.05 0.05 0.01"/>
+			<geom name="midf" pos="0 0.0 0"  size="0.05 0.05 0.01"/>
+			<geom name="near" pos="0 -0.2 0" size="0.05 0.05 0.01"/>
+			<geom name="left" pos="-.15 0 0" size="0.10 0.25 0.01"/>
+			<geom name="righ" pos="0.15 0 0" size="0.10 0.25 0.01"/>
+			<geom name="topp" pos="0 0 0.03" size="0.25 0.005 .02"/>
+		</body>
+
+		<body name="Object" pos="0 .1 .25">
+			<geom name="box" type="box" material="MatWoodB" size="0.045 0.045 0.1"/>
+			<geom name="handle" pos="0 -.065 0" type="box" material="MatSquare" size="0.01 0.020 0.05" condim="4" friction="1 1 .001"/>
+			<joint class="free"/>
+		</body>
+	</worldbody>
+</mujoco>
