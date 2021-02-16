@@ -15,7 +15,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-
+using static OVRSkeleton;
 
 public class MJRemote : MonoBehaviour
 {
@@ -29,9 +29,11 @@ public class MJRemote : MonoBehaviour
         SaveSnapshot = 3,       // (no data exchange)
         SaveVideoframe = 4,     // (no data exchange)
         SetCamera = 5,          // receive: camera index (4 bytes)
-        SetQpos = 6,            // receive: qpos (4*nqpos bytes)
-        SetMocap = 7,           // receive: mocap_pos, mocap_quat (28*nmocap bytes)
-        GetOVRInput = 8        // send: Oculus Controller Data (32 Bytes)
+        MoveCamera = 6,         // receive: new camera position (12 bytes)
+        SetQpos = 7,            // receive: qpos (4*nqpos bytes)
+        SetMocap = 8,           // receive: mocap_pos, mocap_quat (28*nmocap bytes)
+        GetOVRControllerInput = 9,  // send: Oculus controller data (32 Bytes)
+        GetOVRHandInput = 10        // send: Oculus Hand tracking data (TODO Bytes)
     }
 
 
@@ -97,13 +99,17 @@ public class MJRemote : MonoBehaviour
     int lastkey = 0;        // cleared on send
 
     //Oculus
-    float[] posbuf;
-    float[] quatbuf;
-    float grip;
-    public UnityEngine.Transform camera_pos;
-    public GameObject Rcontroller;
-
-    Vector3 camera_init_pos;
+    float[] ctrlposbuf;
+    float[] ctrlquatbuf;
+    float[] handctrlbuf;
+    float trigger;
+    public GameObject PlayerCamera;
+    public GameObject RController;
+    public GameObject RHand;
+    public GameObject TargetIndicator;
+    UnityEngine.Transform CameraTransform;
+    OVRHand ROVRHandHandle;
+    OVRSkeleton ROVRSkeletonHandle;
 
 
     // convert transform from plugin to GameObject
@@ -259,10 +265,15 @@ public class MJRemote : MonoBehaviour
         listener.Start();
 
         //Oculus
-        posbuf = new float[3];
-        quatbuf = new float[4];
-        grip = 0;
-        camera_init_pos = camera_pos.position;
+        ctrlposbuf = new float[3];
+        ctrlquatbuf = new float[4];
+        trigger = 0;
+
+        handctrlbuf = new float[10];
+        CameraTransform = PlayerCamera.transform;
+
+        ROVRHandHandle = RHand.GetComponent<OVRHand>();
+        ROVRSkeletonHandle = RHand.GetComponent<OVRSkeleton>();
     }
 
 
@@ -492,27 +503,70 @@ public class MJRemote : MonoBehaviour
         }
 
         OVRInput.Update();
+        OVRInput.Controller activeController = OVRInput.GetActiveController();
 
-        //Vector3 controllerpos = OVRInput.GetLocalControllerPosition(OVRInput.Controller.RTouch);
-        //Quaternion controllerquat = OVRInput.GetLocalControllerRotation(OVRInput.Controller.RTouch);
-        Vector3 controllerpos = Rcontroller.transform.position + Vector3.forward * -0.3f;
-        Quaternion controllerquat = Rcontroller.transform.rotation * Quaternion.Euler(Vector3.left * 180) * Quaternion.Euler(Vector3.forward * 180);
+        if (activeController == OVRInput.Controller.Touch)
+        {
+            // Get touch controller inputs
+            trigger = OVRInput.Get(OVRInput.Axis1D.PrimaryIndexTrigger, OVRInput.Controller.RTouch);
+            Vector2 lstick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.LTouch);
+            Vector2 rstick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch);
 
-        posbuf[0] = controllerpos.x;
-        posbuf[1] = controllerpos.z;    // In Mujoco, y is unity's z
-        posbuf[2] = controllerpos.y;
-        quatbuf[0] = -1 * controllerquat.w;
-        quatbuf[1] = controllerquat.x;
-        quatbuf[2] = controllerquat.z;
-        quatbuf[3] = controllerquat.y;
+            CameraTransform.rotation = Quaternion.Euler(new Vector3(CameraTransform.rotation.eulerAngles.x, CameraTransform.rotation.eulerAngles.y + 100f * Time.deltaTime * rstick.x, CameraTransform.rotation.z));
+            Vector3 delta_pos = CameraTransform.rotation * (new Vector3(2f * Time.deltaTime * lstick.x, 0f, 2f * Time.deltaTime * lstick.y));
+            CameraTransform.position = new Vector3(CameraTransform.position.x, CameraTransform.position.y, CameraTransform.position.z) + delta_pos;
 
-        grip = OVRInput.Get(OVRInput.Axis1D.PrimaryIndexTrigger, OVRInput.Controller.RTouch);
-        Vector2 lstick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.LTouch);
+            Vector3 controllerpos = RController.transform.position + CameraTransform.rotation * Vector3.forward * -0.3f;
+            Quaternion controllerquat = RController.transform.rotation * Quaternion.Euler(Vector3.left * 180) * Quaternion.Euler(Vector3.forward * 180);
 
-        camera_pos.position = new Vector3(camera_pos.position.x + 0.03f * lstick.x, camera_pos.position.y, camera_pos.position.z + 0.03f * lstick.y);
-        if (OVRInput.Get(OVRInput.Button.PrimaryThumbstick, OVRInput.Controller.LTouch))
-            camera_pos.position = camera_init_pos;
+            ctrlposbuf[0] = controllerpos.x;
+            ctrlposbuf[1] = controllerpos.z;    // In Mujoco, y is unity's z
+            ctrlposbuf[2] = controllerpos.y;
+            ctrlquatbuf[0] = -1 * controllerquat.w;
+            ctrlquatbuf[1] = controllerquat.x;
+            ctrlquatbuf[2] = controllerquat.z;
+            ctrlquatbuf[3] = controllerquat.y;
+        }
 
+        else if (activeController == OVRInput.Controller.Hands)
+        {
+            // Track right hand
+            SkeletonPoseData data = ((IOVRSkeletonDataProvider) ROVRHandHandle).GetSkeletonPoseData();
+            Quaternion[] qdata;
+            if (data.IsDataValid)
+            {
+                int i = 0;
+                qdata = new Quaternion [data.BoneRotations.Length];
+                foreach (OVRPlugin.Quatf bonerot in data.BoneRotations)
+                {
+                    qdata[i].x = bonerot.x;
+                    qdata[i].y = bonerot.y;
+                    qdata[i].z = bonerot.z;
+                    qdata[i].w = bonerot.w;
+                    i++;
+                }
+                Quaternion handquat = RHand.transform.rotation * Quaternion.Euler(Vector3.left * 180) * Quaternion.Euler(Vector3.forward * 180) * Quaternion.Euler(Vector3.up * -87);
+                Vector3 handpos = RHand.transform.position + handquat * (Vector3.forward * 0.06f + Vector3.up * -0.01f + Vector3.right * -0.005f);
+                ctrlposbuf[0] = handpos.x;
+                ctrlposbuf[1] = handpos.z;
+                ctrlposbuf[2] = handpos.y;
+                ctrlquatbuf[0] = -1f * handquat.w;
+                ctrlquatbuf[1] = handquat.x;
+                ctrlquatbuf[2] = handquat.z;
+                ctrlquatbuf[3] = handquat.y;
+
+                handctrlbuf[0] = -1.2f * ((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) - 0.5f;
+                handctrlbuf[1] = 2.5f * ((qdata[2] * Quaternion.Inverse(qdata[3])).z + (qdata[2] * Quaternion.Inverse(qdata[3])).x) * 2 * Mathf.Acos(1f - (qdata[2] * Quaternion.Inverse(qdata[3])).w) + 0.8f;
+                handctrlbuf[2] = -2f * ((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w);
+                handctrlbuf[3] = -1f * ((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) + 0.5f;
+                handctrlbuf[4] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[6])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
+                handctrlbuf[5] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[6])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
+                handctrlbuf[6] = -0.8f * ((qdata[0] * Quaternion.Inverse(qdata[9])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[9])).w);
+                handctrlbuf[7] = -0.8f * ((qdata[0] * Quaternion.Inverse(qdata[12])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[12])).w);
+                handctrlbuf[8] = 1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
+                handctrlbuf[9] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
+            }
+        }
         // not connected: accept connection if pending
         if (client == null || !client.Connected)
         {
@@ -589,6 +643,19 @@ public class MJRemote : MonoBehaviour
                     camindex = Math.Max(-1, Math.Min(ncamera - 1, camindex));
                     break;
 
+                // MoveCamera: move player pov
+                case Command.MoveCamera:
+                    ReadAll(12);
+                    fixed (byte* pos = buffer)
+                    {
+                        float* fpos = (float*)pos;
+                        Vector3 newpos = new Vector3(fpos[0], fpos[1], fpos[2]);
+                        Debug.Log(newpos);
+                        PlayerCamera.transform.position = new Vector3(newpos[0] - 0.05f, newpos[2] + 0.25f, newpos[1] - 0.5f);
+                        TargetIndicator.transform.position = new Vector3(newpos[0], newpos[2] + 0.1f, newpos[1]);
+                    }
+                    break;
+
                 // SetQpos: receive qpos vector
                 case Command.SetQpos:
                     if (nqpos > 0)
@@ -618,15 +685,22 @@ public class MJRemote : MonoBehaviour
                     break;
 
                 // GetOVRInput: send Oculus Controller Data (32 Bytes)
-                case Command.GetOVRInput:
-                    stream.Write(BitConverter.GetBytes(grip), 0, 4);
-                    stream.Write(BitConverter.GetBytes(posbuf[0]), 0, 4);
-                    stream.Write(BitConverter.GetBytes(posbuf[1]), 0, 4);
-                    stream.Write(BitConverter.GetBytes(posbuf[2]), 0, 4);
-                    stream.Write(BitConverter.GetBytes(quatbuf[0]), 0, 4);
-                    stream.Write(BitConverter.GetBytes(quatbuf[1]), 0, 4);
-                    stream.Write(BitConverter.GetBytes(quatbuf[2]), 0, 4);
-                    stream.Write(BitConverter.GetBytes(quatbuf[3]), 0, 4);
+                case Command.GetOVRControllerInput:
+                    stream.Write(BitConverter.GetBytes(trigger), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlposbuf[0]), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlposbuf[1]), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlposbuf[2]), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlquatbuf[0]), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlquatbuf[1]), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlquatbuf[2]), 0, 4);
+                    stream.Write(BitConverter.GetBytes(ctrlquatbuf[3]), 0, 4);
+                    break;
+
+                case Command.GetOVRHandInput:
+                    foreach (float handctrl in handctrlbuf)
+                    {
+                        stream.Write(BitConverter.GetBytes(handctrl), 0, 4);
+                    }
                     break;
             }
         }
