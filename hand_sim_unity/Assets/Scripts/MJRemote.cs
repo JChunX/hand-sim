@@ -33,7 +33,8 @@ public class MJRemote : MonoBehaviour
         SetQpos = 7,            // receive: qpos (4*nqpos bytes)
         SetMocap = 8,           // receive: mocap_pos, mocap_quat (28*nmocap bytes)
         GetOVRControllerInput = 9,  // send: Oculus controller data (32 Bytes)
-        GetOVRHandInput = 10        // send: Oculus Hand tracking data (TODO Bytes)
+        GetOVRHandInput = 10,        // send: Oculus Hand tracking data (40 Bytes)
+        GetOVRControlType = 11
     }
 
 
@@ -110,6 +111,7 @@ public class MJRemote : MonoBehaviour
     UnityEngine.Transform CameraTransform;
     OVRHand ROVRHandHandle;
     OVRSkeleton ROVRSkeletonHandle;
+    int isUsingController;
 
 
     // convert transform from plugin to GameObject
@@ -502,11 +504,14 @@ public class MJRemote : MonoBehaviour
             lastcheck = Time.time;
         }
 
+        isUsingController = 0;
+
         OVRInput.Update();
         OVRInput.Controller activeController = OVRInput.GetActiveController();
 
         if (activeController == OVRInput.Controller.Touch)
         {
+            isUsingController = 1;
             // Get touch controller inputs
             trigger = OVRInput.Get(OVRInput.Axis1D.PrimaryIndexTrigger, OVRInput.Controller.RTouch);
             Vector2 lstick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.LTouch);
@@ -554,7 +559,7 @@ public class MJRemote : MonoBehaviour
                 ctrlquatbuf[1] = handquat.x;
                 ctrlquatbuf[2] = handquat.z;
                 ctrlquatbuf[3] = handquat.y;
-
+                
                 handctrlbuf[0] = -1.2f * ((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) - 0.5f;
                 handctrlbuf[1] = 2.5f * ((qdata[2] * Quaternion.Inverse(qdata[3])).z + (qdata[2] * Quaternion.Inverse(qdata[3])).x) * 2 * Mathf.Acos(1f - (qdata[2] * Quaternion.Inverse(qdata[3])).w) + 0.8f;
                 handctrlbuf[2] = -2f * ((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w);
@@ -650,7 +655,6 @@ public class MJRemote : MonoBehaviour
                     {
                         float* fpos = (float*)pos;
                         Vector3 newpos = new Vector3(fpos[0], fpos[1], fpos[2]);
-                        Debug.Log(newpos);
                         PlayerCamera.transform.position = new Vector3(newpos[0] - 0.05f, newpos[2] + 0.25f, newpos[1] - 0.5f);
                         TargetIndicator.transform.position = new Vector3(newpos[0], newpos[2] + 0.1f, newpos[1]);
                     }
@@ -701,6 +705,10 @@ public class MJRemote : MonoBehaviour
                     {
                         stream.Write(BitConverter.GetBytes(handctrl), 0, 4);
                     }
+                    break;
+
+                case Command.GetOVRControlType:
+                    stream.Write(BitConverter.GetBytes(isUsingController), 0, 4);
                     break;
             }
         }
