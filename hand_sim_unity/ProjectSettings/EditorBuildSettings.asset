@@ -5,9 +5,24 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
+  - enabled: 0
+    path: 
+    guid: 00000000000000000000000000000000
   - enabled: 1
     path: Assets/Scenes/MainScene.unity
-    guid: 9fc0d4010bbf28b4594072e72b8655ab
+    guid: 2806764e57e2e9942994ee10a3ff69ea
+  - enabled: 1
+    path: Assets/Scenes/MPLBoxBlock.unity
+    guid: d985783e0f1148549b555d2e81c6bdcc
+  - enabled: 1
+    path: Assets/Scenes/MPLCoins.unity
+    guid: 22dc267bdee9abf468b690139b000145
+  - enabled: 1
+    path: Assets/Scenes/MPLHandDemo.unity
+    guid: 6ec1461861297e14ba84bc3d07a44ff4
+  - enabled: 1
+    path: Assets/Scenes/MPLSphere.unity
+    guid: e1d38d2c479121a4a84025ae86a40efa
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 47bf04ecb490844418c0641126d8943a,
       type: 2}

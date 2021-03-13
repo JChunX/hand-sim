@@ -103,6 +103,7 @@ public class MJRemote : MonoBehaviour
     float[] ctrlposbuf;
     float[] ctrlquatbuf;
     float[] handctrlbuf;
+    Quaternion[] prevbonerot;
     float trigger;
     public GameObject PlayerCamera;
     public GameObject RController;
@@ -272,6 +273,7 @@ public class MJRemote : MonoBehaviour
         trigger = 0;
 
         handctrlbuf = new float[10];
+
         CameraTransform = PlayerCamera.transform;
 
         ROVRHandHandle = RHand.GetComponent<OVRHand>();
@@ -542,12 +544,29 @@ public class MJRemote : MonoBehaviour
             {
                 int i = 0;
                 qdata = new Quaternion [data.BoneRotations.Length];
+                if (prevbonerot == null)
+                    {
+                    prevbonerot = new Quaternion[data.BoneRotations.Length];
+
+                    for (int j = 0; j < prevbonerot.Length; j++)
+                    {
+                        prevbonerot[j] = new Quaternion(0, 0, 0, 1);
+                    }
+                }
+
+
                 foreach (OVRPlugin.Quatf bonerot in data.BoneRotations)
                 {
-                    qdata[i].x = bonerot.x;
-                    qdata[i].y = bonerot.y;
-                    qdata[i].z = bonerot.z;
-                    qdata[i].w = bonerot.w;
+                    qdata[i].x = (prevbonerot[i].x + bonerot.x) / 2;
+                    qdata[i].y = (prevbonerot[i].y + bonerot.y) / 2;
+                    qdata[i].z = (prevbonerot[i].z + bonerot.z) / 2;
+                    qdata[i].w = (prevbonerot[i].w + bonerot.w) / 2;
+
+                    prevbonerot[i].x = bonerot.x;
+                    prevbonerot[i].y = bonerot.y;
+                    prevbonerot[i].z = bonerot.z;
+                    prevbonerot[i].w = bonerot.w;
+
                     i++;
                 }
                 Quaternion handquat = RHand.transform.rotation * Quaternion.Euler(Vector3.left * 180) * Quaternion.Euler(Vector3.forward * 180) * Quaternion.Euler(Vector3.up * -87);
@@ -560,15 +579,25 @@ public class MJRemote : MonoBehaviour
                 ctrlquatbuf[2] = handquat.z;
                 ctrlquatbuf[3] = handquat.y;
                 
-                handctrlbuf[0] = -1.2f * ((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) - 0.5f;
-                handctrlbuf[1] = 2.5f * ((qdata[2] * Quaternion.Inverse(qdata[3])).z + (qdata[2] * Quaternion.Inverse(qdata[3])).x) * 2 * Mathf.Acos(1f - (qdata[2] * Quaternion.Inverse(qdata[3])).w) + 0.8f;
-                handctrlbuf[2] = -2f * ((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w);
-                handctrlbuf[3] = -1f * ((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) + 0.5f;
-                handctrlbuf[4] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[6])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
+                // Thumb ABD
+                handctrlbuf[0] = -5.5f * (((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) + 1.0f);
+                // Thumb MCP
+                handctrlbuf[1] = 2.5f * (((qdata[2] * Quaternion.Inverse(qdata[3])).z + (qdata[2] * Quaternion.Inverse(qdata[3])).x) * 2 * Mathf.Acos(1f - (qdata[2] * Quaternion.Inverse(qdata[3])).w) + 0.0f);
+                // Thumb PIP
+                handctrlbuf[2] = -1.5f * (((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w) - 0.1f);
+                // Thumb DIP
+                handctrlbuf[3] = -1f * (((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) - 0.2f);
+                // Index ABD
+                handctrlbuf[4] = -0.9f * ((qdata[0] * Quaternion.Inverse(qdata[6])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
+                // Index MCP
                 handctrlbuf[5] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[6])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
+                // Middle MCP
                 handctrlbuf[6] = -0.8f * ((qdata[0] * Quaternion.Inverse(qdata[9])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[9])).w);
+                // Ring MCP
                 handctrlbuf[7] = -0.8f * ((qdata[0] * Quaternion.Inverse(qdata[12])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[12])).w);
+                // Pinky ABD
                 handctrlbuf[8] = 1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
+                // Pinky MCP
                 handctrlbuf[9] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
             }
         }
