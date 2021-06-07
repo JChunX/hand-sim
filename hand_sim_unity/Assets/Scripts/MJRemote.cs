@@ -485,6 +485,27 @@ public class MJRemote : MonoBehaviour
             i += stream.Read(buffer, i, n - i);
     }
 
+    private float swing_twist(Quaternion rotation, Vector3 direction)
+    {
+        direction = Vector3.Normalize(direction);
+        Vector3 rotationAxis = new Vector3(rotation.x, rotation.y, rotation.z);
+        float prod = Vector3.Dot(direction, rotationAxis);
+        Vector3 proj = prod * direction;
+        Quaternion twist = new Quaternion(proj.x, proj.y, proj.z, rotation.w);
+
+        /*if (prod < 0.0f)
+        {
+            twist.x *= -1;
+            twist.y *= -1;
+            twist.z *= -1;
+            twist.w *= -1;
+        }*/
+
+        twist = Quaternion.Normalize(twist);
+
+        return twist.w;
+    }
+
 
     // per-frame update
     unsafe void Update()
@@ -578,7 +599,7 @@ public class MJRemote : MonoBehaviour
                 ctrlquatbuf[1] = handquat.x;
                 ctrlquatbuf[2] = handquat.z;
                 ctrlquatbuf[3] = handquat.y;
-                
+                /*
                 // Thumb ABD
                 handctrlbuf[0] = -5.5f * (((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) + 1.0f);
                 // Thumb MCP
@@ -586,7 +607,7 @@ public class MJRemote : MonoBehaviour
                 // Thumb PIP
                 handctrlbuf[2] = -1.5f * (((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w) - 0.1f);
                 // Thumb DIP
-                handctrlbuf[3] = -1f * (((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) - 0.2f);
+                handctrlbuf[3] = -1.2f * (((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) - 0.2f);
                 // Index ABD
                 handctrlbuf[4] = -0.9f * ((qdata[0] * Quaternion.Inverse(qdata[6])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
                 // Index MCP
@@ -598,7 +619,28 @@ public class MJRemote : MonoBehaviour
                 // Pinky ABD
                 handctrlbuf[8] = 1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
                 // Pinky MCP
-                handctrlbuf[9] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
+                handctrlbuf[9] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);*/
+
+                // Thumb ABD
+                handctrlbuf[0] = -5.5f * (((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) + 1.0f);
+                // Thumb MCP
+                handctrlbuf[1] = 2.5f * (((qdata[2] * Quaternion.Inverse(qdata[3])).z + (qdata[2] * Quaternion.Inverse(qdata[3])).x) * 2 * Mathf.Acos(1f - (qdata[2] * Quaternion.Inverse(qdata[3])).w) + 0.0f);
+                // Thumb PIP
+                handctrlbuf[2] = -1.5f * (((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w) - 0.1f);
+                // Thumb DIP
+                handctrlbuf[3] = -1.2f * (((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) - 0.2f);
+                // Index ABD
+                handctrlbuf[4] = -0.9f * ((qdata[0] * Quaternion.Inverse(qdata[6])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
+                // Index MCP
+                handctrlbuf[5] = -Math.Sign((qdata[0] * Quaternion.Inverse(qdata[6])).z) * 2 * Mathf.Acos(swing_twist(qdata[0] * Quaternion.Inverse(qdata[6]), qdata[6] * new Vector3(0, 0, 1)));
+                // Middle MCP
+                handctrlbuf[6] = -Math.Sign((qdata[0] * Quaternion.Inverse(qdata[9])).z) * 2 * Mathf.Acos(swing_twist(qdata[0] * Quaternion.Inverse(qdata[9]), qdata[9] * new Vector3(0, 0, 1)));
+                // Ring MCP
+                handctrlbuf[7] = -Math.Sign((qdata[0] * Quaternion.Inverse(qdata[12])).z) * 2 * Mathf.Acos(swing_twist(qdata[0] * Quaternion.Inverse(qdata[12]), qdata[12] * new Vector3(0, 0, 1)));
+                // Pinky ABD
+                handctrlbuf[8] = 1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
+                // Pinky MCP
+                handctrlbuf[9] = -Math.Sign((qdata[0] * Quaternion.Inverse(qdata[16])).z) * 2 * Mathf.Acos(swing_twist(qdata[0] * Quaternion.Inverse(qdata[16]), qdata[16] * new Vector3(0, 0, 1)));
             }
         }
         // not connected: accept connection if pending
@@ -684,7 +726,7 @@ public class MJRemote : MonoBehaviour
                     {
                         float* fpos = (float*)pos;
                         Vector3 newpos = new Vector3(fpos[0], fpos[1], fpos[2]);
-                        PlayerCamera.transform.position = new Vector3(newpos[0] - 0.05f, newpos[2] + 0.25f, newpos[1] - 0.5f);
+                        PlayerCamera.transform.position = new Vector3(newpos[0] - 0.05f, newpos[2] + 0.45f, newpos[1] - 0.5f);
                         TargetIndicator.transform.position = new Vector3(newpos[0], newpos[2] + 0.1f, newpos[1]);
                     }
                     break;
