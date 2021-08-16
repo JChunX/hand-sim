@@ -599,27 +599,8 @@ public class MJRemote : MonoBehaviour
                 ctrlquatbuf[1] = handquat.x;
                 ctrlquatbuf[2] = handquat.z;
                 ctrlquatbuf[3] = handquat.y;
-                /*
-                // Thumb ABD
-                handctrlbuf[0] = -5.5f * (((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) + 1.0f);
-                // Thumb MCP
-                handctrlbuf[1] = 2.5f * (((qdata[2] * Quaternion.Inverse(qdata[3])).z + (qdata[2] * Quaternion.Inverse(qdata[3])).x) * 2 * Mathf.Acos(1f - (qdata[2] * Quaternion.Inverse(qdata[3])).w) + 0.0f);
-                // Thumb PIP
-                handctrlbuf[2] = -1.5f * (((qdata[3] * Quaternion.Inverse(qdata[4])).z) * 2 * Mathf.Acos(1f - (qdata[3] * Quaternion.Inverse(qdata[4])).w) - 0.1f);
-                // Thumb DIP
-                handctrlbuf[3] = -1.2f * (((qdata[4] * Quaternion.Inverse(qdata[5])).z) * 2 * Mathf.Acos(1f - (qdata[4] * Quaternion.Inverse(qdata[5])).w) - 0.2f);
-                // Index ABD
-                handctrlbuf[4] = -0.9f * ((qdata[0] * Quaternion.Inverse(qdata[6])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
-                // Index MCP
-                handctrlbuf[5] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[6])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[6])).w);
-                // Middle MCP
-                handctrlbuf[6] = -0.8f * ((qdata[0] * Quaternion.Inverse(qdata[9])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[9])).w);
-                // Ring MCP
-                handctrlbuf[7] = -0.8f * ((qdata[0] * Quaternion.Inverse(qdata[12])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[12])).w);
-                // Pinky ABD
-                handctrlbuf[8] = 1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).y) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);
-                // Pinky MCP
-                handctrlbuf[9] = -1f * ((qdata[0] * Quaternion.Inverse(qdata[16])).z) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[16])).w);*/
+
+                // Maps bone quarternions to joint angles via swing-twist transform
 
                 // Thumb ABD
                 handctrlbuf[0] = -5.5f * (((qdata[0] * Quaternion.Inverse(qdata[2])).x) * 2 * Mathf.Acos(1f - (qdata[0] * Quaternion.Inverse(qdata[2])).w) + 1.0f);
